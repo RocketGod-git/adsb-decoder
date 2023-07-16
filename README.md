@@ -39,7 +39,7 @@ This includes a timestamp, the ADS-B message, and a signal strength value, separ
 4. Run the script:
 
 ```bash
-python adsb_streamer.py
+python adsb-streamer.py
 ```
 
 The script will continuously read from the ADS-B data file, decode any aircraft information it can from the ADS-B messages, stream it in the terminal window, and send a notification to the specified Discord webhook whenever a new aircraft is detected.
@@ -57,3 +57,5 @@ Once SDRangel is set up and receiving ADS-B messages, you can configure it to wr
 Please note that the quality and quantity of ADS-B data you can receive with SDRangel will depend on your location, the quality of your SDR device and antenna, and other factors.
 
 Also, keep in mind that you can use any other source of ADS-B data, as long as the data is provided in the required format.
+
+![RocketGod](https://github.com/RocketGod-git/adsb-decoder/assets/57732082/90f9eafd-e04d-4d2a-bc6f-5571f3f76022)
