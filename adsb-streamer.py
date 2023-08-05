@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from requests.exceptions import HTTPError
 from colorama import Fore, Style
 
-WEBHOOK_URL = 'https://discord.com/api/webhooks/1129819369820672191/Lk0JXtAlf_115zjkFkxmwbbLm3sVuYjwrP6f5GUihbx9R4mBj1l_diN3BzdWaPSINEf5'
+WEBHOOK_URL = 'YOUR-WEBHOOK-GOES-HERE'
 FILENAME = './adsb'
 
 POSITION_MESSAGE_TIMEOUT = timedelta(minutes=2)
