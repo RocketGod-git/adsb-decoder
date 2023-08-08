@@ -1,16 +1,84 @@
+# __________                  __             __     ________             .___ 
+# \______   \  ____    ____  |  | __  ____ _/  |_  /  _____/   ____    __| _/ 
+#  |       _/ /  _ \ _/ ___\ |  |/ /_/ __ \\   __\/   \  ___  /  _ \  / __ |  
+#  |    |   \(  <_> )\  \___ |    < \  ___/ |  |  \    \_\  \(  <_> )/ /_/ |  
+#  |____|_  / \____/  \___  >|__|_ \ \___  >|__|   \______  / \____/ \____ |  
+#         \/              \/      \/     \/               \/              \/  
+#
+# ADS-B decoder by RocketGod
+# Edit config.json before running
+
+import subprocess
+import sys
+
+REQUIRED_PACKAGES = [
+    'requests',
+    'pyModeS',
+    'colorama'
+]
+
+def install_package(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+def check_and_install_packages():
+    missing_packages = []
+    for package in REQUIRED_PACKAGES:
+        try:
+            __import__(package)
+        except ImportError:
+            print(f"{package} not installed. Attempting to auto-install...")
+            try:
+                install_package(package)
+                __import__(package)
+                print(f"{package} installed successfully.")
+            except subprocess.CalledProcessError:
+                print(f"Failed to install {package}. Please install it manually.")
+
+                missing_packages.append(package)
+    
+    if missing_packages:
+        packages_str = " ".join(missing_packages)
+        print(f"To install missing packages, run: \n\n{sys.executable} -m pip install {packages_str}\n")
+
+# Ensure all required packages are installed
+check_and_install_packages()
+
+# Then continue with the rest of your script
 import time
 import requests
 import pyModeS as pms
-from datetime import datetime, timedelta
+import json
+from datetime import timedelta
+import datetime
 from requests.exceptions import HTTPError
 from colorama import Fore, Style
+from extrapack import decode_message
 
-WEBHOOK_URL = 'YOUR-WEBHOOK-GOES-HERE'
-FILENAME = './adsb'
+
+# Load config from config.json
+with open('config.json', 'r') as file:
+    config = json.load(file)
+
+WEBHOOK_URL = config["WEBHOOK_URL"]
+FILENAME = config["FILENAME"]
 
 POSITION_MESSAGE_TIMEOUT = timedelta(minutes=2)
 MESSAGE_RATE_LIMIT = timedelta(seconds=10)
 DISCORD_RATE_LIMIT_PAUSE = 60  # Pause duration in seconds when Discord rate limit is reached
+
+def display_header():
+    header = """
+ ________                  __             __     ________             .___ 
+ \______   \  ____    ____  |  | __  ____ _/  |_  /  _____/   ____    __| _/ 
+  |       _/ /  _ \ _/ ___\ |  |/ /_/ __ \\\\   __\/   \  ___  /  _ \  / __ |  
+  |    |   \(  <_> )\  \___ |    < \  ___/ |  |  \    \_\  \(  <_> )/ /_/ |  
+  |____|_  / \____/  \___  >|__|_ \ \___  >|__|   \______  / \____/ \____ |  
+         \/              \/      \/     \/               \/              \/  
+    """
+    print(header)
+    print("ADS-B decoder by RocketGod")
+    print("Edit config.json before running")
+    print("Listening on 1090 MHz for messages to decode...\n")
 
 class AircraftState:
     def __init__(self):
@@ -37,18 +105,14 @@ def process_line(line):
         return
 
     try:
-        timestamp = datetime.strptime(parts[0], "%a %b %d %Y")  # adjust according to your timestamp format
+        timestamp = datetime.datetime.strptime(parts[0], "%a %b %d %Y")  # adjust according to your timestamp format
         unix_timestamp = time.mktime(timestamp.timetuple())
         message = parts[2]
     except IndexError:
         return
 
-    # If message is empty or not a hexadecimal string, return
-    if not message or not all(c in '0123456789abcdefABCDEF' for c in message):
-        return
-
-    # Skip if message is not ADS-B
-    if pms.df(message) != 17:
+    # If message is empty or not a hexadecimal string, or not and ADS-B message return
+    if not message or not all(c in '0123456789abcdefABCDEF' for c in message) or pms.df(message) != 17:
         return
 
     icao = pms.adsb.icao(message)
@@ -80,15 +144,15 @@ def process_line(line):
 
         if state.last_odd_message and state.last_even_message:
             state.lat, state.lon = pms.adsb.position(state.last_even_message, state.last_odd_message, state.last_even_message_t, state.last_odd_message_t)
-            state.last_position_update = datetime.now()
+            state.last_position_update = datetime.datetime.now()
 
     # If position is too old, set to N/A
-    if state.last_position_update and datetime.now() - state.last_position_update > POSITION_MESSAGE_TIMEOUT:
+    if state.last_position_update and datetime.datetime.now() - state.last_position_update > POSITION_MESSAGE_TIMEOUT:
         state.lat = 'N/A'
         state.lon = 'N/A'
 
     # If callsign or position is not decoded, or if rate limit not passed, don't send the message
-    if state.callsign is None or state.lat is None or state.lon is None or (state.last_message_time and datetime.now() - state.last_message_time < MESSAGE_RATE_LIMIT):
+    if state.callsign is None or state.lat is None or state.lon is None or (state.last_message_time and datetime.datetime.now() - state.last_message_time < MESSAGE_RATE_LIMIT):
         return
 
     decoded_data = {
@@ -101,6 +165,10 @@ def process_line(line):
         'Latitude': state.lat,
         'Longitude': state.lon,
     }
+
+    # Decoding the message and merging with the existing data
+    decoded_data_extended = decode_message(message)
+    decoded_data.update(decoded_data_extended)
 
     # Pretty print output
     print(Fore.YELLOW + 'ICAO: ' + decoded_data['ICAO'], end=' ')
@@ -116,7 +184,7 @@ def process_line(line):
     send_message_to_discord(decoded_data)
 
     # Update last message time
-    state.last_message_time = datetime.now()
+    state.last_message_time = datetime.datetime.now()
 
 def send_message_to_discord(decoded_data):
     data = {
@@ -133,9 +201,11 @@ def send_message_to_discord(decoded_data):
             break
         except HTTPError as err:
             if response.status_code == 429:  # Too Many Requests
-                print(Fore.RED + f"Rate limit reached, pausing for {DISCORD_RATE_LIMIT_PAUSE} seconds...")
+                retry_after = response.json().get("retry_after", DISCORD_RATE_LIMIT_PAUSE)  # Use the provided retry time or default to 60 seconds.
+                print(Fore.RED + f"Rate limit reached, pausing for {retry_after} seconds...")
                 print(Style.RESET_ALL)
-                time.sleep(DISCORD_RATE_LIMIT_PAUSE)
+                time.sleep(retry_after)
+
             else:
                 print(Fore.RED + f"HTTP error occurred: {err}")
                 print(Style.RESET_ALL)
@@ -157,6 +227,7 @@ def tail_file_and_process():
             time.sleep(1)
 
 if __name__ == '__main__':
+    display_header()
     try:
         tail_file_and_process()
     except KeyboardInterrupt:
