@@ -24,7 +24,7 @@ pip install requests pyModeS colorama
 
 1. Clone this repository or download the script `adsb-streamer.py`.
 
-2. Update the `WEBHOOK_URL` variable in the script with your Discord webhook URL.
+2. Update the `WEBHOOK_URL` variable in the script with your Discord webhook URL. Leave a blank "" if you want to output to the terminal only.
 
 3. Update the `FILENAME` variable in the script with the path to your ADS-B data file.
 

@@ -97,6 +97,12 @@ class AircraftState:
 
 aircraft_states = {}
 
+def is_valid_webhook_url(url):
+    if not url:
+        return False
+    # Add any other validations if needed
+    return True
+
 def process_line(line):
     parts = line.split(',')
     
@@ -187,6 +193,11 @@ def process_line(line):
     state.last_message_time = datetime.datetime.now()
 
 def send_message_to_discord(decoded_data):
+    if not is_valid_webhook_url(WEBHOOK_URL):
+        print(Fore.RED + "Webhook URL is blank or invalid. Displaying output in terminal only.")
+        print(Style.RESET_ALL)
+        return
+    
     data = {
         'content': '',
         'embeds': [{
@@ -201,11 +212,10 @@ def send_message_to_discord(decoded_data):
             break
         except HTTPError as err:
             if response.status_code == 429:  # Too Many Requests
-                retry_after = response.json().get("retry_after", DISCORD_RATE_LIMIT_PAUSE)  # Use the provided retry time or default to 60 seconds.
+                retry_after = response.json().get("retry_after", DISCORD_RATE_LIMIT_PAUSE)
                 print(Fore.RED + f"Rate limit reached, pausing for {retry_after} seconds...")
                 print(Style.RESET_ALL)
                 time.sleep(retry_after)
-
             else:
                 print(Fore.RED + f"HTTP error occurred: {err}")
                 print(Style.RESET_ALL)
