@@ -30,11 +30,11 @@ def decode_adsb(message):
             data["Altitude"] = pms.adsb.altitude(message)
         # elif tc == 28:
             # data["AircraftStatus"] = pms.adsb.aircraft_status(message)
-        elif tc == 29:
-            data["EmergencyStateStatus"] = pms.adsb.emergency(message)
-        elif tc == 31:
-            data["OperationalStatus"] = pms.adsb.operational_status(message)
-            data["SystemCapability"] = pms.adsb.om_acas(message)
+        # elif tc == 29:
+            # data["EmergencyStateStatus"] = pms.adsb.emergency(message)
+        # elif tc == 31:
+            # data["OperationalStatus"] = pms.adsb.operational_status(message)
+            # data["SystemCapability"] = pms.adsb.om_acas(message)
 
         return data
     except Exception as e:
